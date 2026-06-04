@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="StudyFlow — Your professional AI-powered study routine manager" />
+  <meta name="theme-color" content="#0f1117" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- External Libraries -->
+  <!-- Firebase (v9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Dexie.js (IndexedDB) -->
+  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+
+  <!-- SortableJS (Drag & Drop) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Tesseract.js (OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+
+  <!-- html2canvas + jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+
+  <title>StudyFlow — Study Routine PWA</title>
+</head>
+<body>
+
+  <!-- ============================================================
+       LOADING SCREEN
+       Shown until Firebase Auth resolves the user's session.
+  ============================================================ -->
+  <div id="loading-screen" class="loading-screen" aria-live="polite">
+    <div class="loader-logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">StudyFlow</span>
+    </div>
+    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    <p class="loader-sub">Initialising your workspace…</p>
+  </div>
+
+
+  <!-- ============================================================
+       AUTH SCREEN  (Login / Register)
+  ============================================================ -->
+  <section id="auth-screen" class="auth-screen hidden" aria-label="Authentication">
+    <div class="auth-bg-art" aria-hidden="true">
+      <div class="art-orb art-orb--1"></div>
+      <div class="art-orb art-orb--2"></div>
+      <div class="art-grid"></div>
+    </div>
+
+    <div class="auth-card">
+      <!-- Branding -->
+      <div class="auth-brand">
+        <span class="brand-icon" aria-hidden="true">◈</span>
+        <h1 class="brand-name">StudyFlow</h1>
+        <p class="brand-tagline">Your intelligent study companion</p>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="auth-tabs" role="tablist" aria-label="Login or Register">
+        <button class="auth-tab auth-tab--active" role="tab" aria-selected="true"
+                data-tab="login" id="tab-login" aria-controls="panel-login">Sign In</button>
+        <button class="auth-tab" role="tab" aria-selected="false"
+                data-tab="register" id="tab-register" aria-controls="panel-register">Register</button>
+        <span class="tab-indicator" aria-hidden="true"></span>
+      </div>
+
+      <!-- Login Panel -->
+      <div class="auth-panel" id="panel-login" role="tabpanel" aria-labelledby="tab-login">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com"
+                 autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="login-password" placeholder="••••••••"
+                   autocomplete="current-password" required />
+            <button type="button" class="toggle-pw" aria-label="Toggle password visibility"
+                    data-target="login-password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <p id="auth-error" class="auth-error" role="alert" aria-live="assertive"></p>
+        <button id="btn-login" class="btn btn--primary btn--full">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+        <button id="btn-google-login" class="btn btn--outline btn--full btn--google">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+
+      <!-- Register Panel -->
+      <div class="auth-panel hidden" id="panel-register" role="tabpanel" aria-labelledby="tab-register">
+        <div class="form-group">
+          <label for="reg-name">Full Name</label>
+          <input type="text" id="reg-name" placeholder="Alex Smith"
+                 autocomplete="name" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" placeholder="you@example.com"
+                 autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="reg-password" placeholder="Min. 8 characters"
+                   autocomplete="new-password" required minlength="8" />
+            <button type="button" class="toggle-pw" aria-label="Toggle password visibility"
+                    data-target="reg-password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <p id="reg-error" class="auth-error" role="alert" aria-live="assertive"></p>
+        <button id="btn-register" class="btn btn--primary btn--full">
+          <span class="btn-text">Create Account</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       APP SHELL  (visible only when logged in)
+  ============================================================ -->
+  <div id="app" class="app hidden" role="application" aria-label="StudyFlow Dashboard">
+
+    <!-- ── TOP NAV BAR ─────────────────────────────────────────── -->
+    <header class="topbar" role="banner">
+      <div class="topbar__left">
+        <!-- Mobile hamburger -->
+        <button class="hamburger" id="btn-hamburger" aria-label="Open sidebar" aria-expanded="false"
+                aria-controls="sidebar">
+          <span></span><span></span><span></span>
+        </button>
+        <a href="#" class="topbar__brand" aria-label="StudyFlow home">
+          <span aria-hidden="true">◈</span> StudyFlow
+        </a>
+      </div>
+
+      <div class="topbar__center">
+        <!-- Pomodoro Timer (always visible in topbar) -->
+        <div class="pomodoro-mini" id="pomodoro-widget" role="timer"
+             aria-label="Pomodoro timer" aria-live="polite">
+          <button class="pomo-mode-btn pomo-mode-btn--active" data-mode="focus" aria-pressed="true">Focus</button>
+          <button class="pomo-mode-btn" data-mode="break" aria-pressed="false">Break</button>
+          <span class="pomo-time" id="pomo-display">25:00</span>
+          <button class="pomo-ctrl" id="pomo-start" aria-label="Start timer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="pomo-ctrl" id="pomo-reset" aria-label="Reset timer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          </button>
+          <span class="pomo-sessions" id="pomo-sessions" title="Sessions completed today">🍅 <span id="pomo-count">0</span></span>
+        </div>
+      </div>
+
+      <div class="topbar__right">
+        <!-- Streak badge -->
+        <div class="streak-badge" id="streak-badge" title="Current study streak">
+          <span aria-hidden="true">🔥</span>
+          <span id="streak-count">0</span>
+          <span class="streak-label">streak</span>
+        </div>
+
+        <!-- XP / Points -->
+        <div class="xp-badge" id="xp-badge" title="Total experience points">
+          <span aria-hidden="true">⚡</span>
+          <span id="xp-count">0</span> XP
+        </div>
+
+        <!-- Theme toggle -->
+        <button class="icon-btn" id="btn-theme" aria-label="Toggle dark/light mode" title="Toggle theme">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="icon-sun hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+
+        <!-- User avatar & logout -->
+        <div class="user-menu" id="user-menu">
+          <button class="user-avatar" id="btn-user-menu" aria-label="User menu" aria-haspopup="true"
+                  aria-expanded="false">
+            <img id="user-photo" src="" alt="" aria-hidden="true" />
+            <span id="user-initials" aria-hidden="true">?</span>
+          </button>
+          <div class="user-dropdown" id="user-dropdown" role="menu" aria-hidden="true">
+            <div class="dropdown-header">
+              <strong id="dropdown-name">User</strong>
+              <small id="dropdown-email">email@example.com</small>
+            </div>
+            <hr class="dropdown-divider" />
+            <button class="dropdown-item" role="menuitem" id="btn-export-pdf">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Export to PDF
+            </button>
+            <button class="dropdown-item" role="menuitem" id="btn-export-img">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Export as Image
+            </button>
+            <hr class="dropdown-divider" />
+            <button class="dropdown-item dropdown-item--danger" role="menuitem" id="btn-logout">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+      <ul class="nav-list" role="list">
+
+        <li class="nav-item">
+          <button class="nav-link nav-link--active" data-view="dashboard" aria-current="page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>Dashboard</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Schedule</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="studylog">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Study Log</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="notes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Smart Notes</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="progress">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Progress</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Calendar</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <button class="nav-link" data-view="achievements">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+            <span>Achievements</span>
+          </button>
+        </li>
+
+      </ul>
+
+      <!-- Offline indicator -->
+      <div class="offline-badge" id="offline-badge" aria-live="polite" hidden>
+        <span aria-hidden="true">📡</span> Offline — data saved locally
+      </div>
+    </nav>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+
+    <!-- ── MAIN CONTENT AREA ─────────────────────────────────────── -->
+    <main class="main" id="main-content" role="main" tabindex="-1">
+
+      <!-- ── TOAST NOTIFICATIONS ────────────────────────────────── -->
+      <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: DASHBOARD
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view view--active" id="view-dashboard" aria-label="Dashboard">
+
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">Good <span id="greeting-time">morning</span>, <span id="greeting-name">Scholar</span> 👋</h2>
+            <p class="view-sub" id="dashboard-date"></p>
+          </div>
+          <button class="btn btn--primary btn--sm" id="btn-log-session">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Log Session
+          </button>
+        </div>
+
+        <!-- Stat cards row -->
+        <div class="stats-grid" role="list" aria-label="Today's statistics">
+          <div class="stat-card" role="listitem">
+            <div class="stat-icon" aria-hidden="true">📚</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-today-sessions">0</span>
+              <span class="stat-label">Sessions Today</span>
+            </div>
+          </div>
+          <div class="stat-card" role="listitem">
+            <div class="stat-icon" aria-hidden="true">⏱</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-today-minutes">0m</span>
+              <span class="stat-label">Study Time</span>
+            </div>
+          </div>
+          <div class="stat-card" role="listitem">
+            <div class="stat-icon" aria-hidden="true">🔥</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-streak">0</span>
+              <span class="stat-label">Day Streak</span>
+            </div>
+          </div>
+          <div class="stat-card" role="listitem">
+            <div class="stat-icon" aria-hidden="true">⚡</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-xp">0</span>
+              <span class="stat-label">Total XP</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard grid: chart + today's schedule -->
+        <div class="dashboard-grid">
+
+          <!-- Weekly activity chart -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Weekly Activity</h3>
+              <span class="card-badge" id="week-total-badge">— min</span>
+            </div>
+            <div class="chart-wrap" style="position:relative;height:180px">
+              <canvas id="chart-weekly" aria-label="Weekly study minutes chart" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Today's schedule snippet -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Today's Schedule</h3>
+              <button class="btn btn--ghost btn--sm" data-nav="schedule">View All →</button>
+            </div>
+            <ul class="today-schedule-list" id="today-schedule-list" role="list"
+                aria-label="Today's scheduled sessions">
+              <li class="empty-state">No sessions scheduled for today.</li>
+            </ul>
+          </div>
+
+          <!-- Pomodoro full panel -->
+          <div class="card card--pomodoro" id="pomodoro-card">
+            <div class="card-header">
+              <h3 class="card-title">Focus Timer</h3>
+              <span class="pomo-ring-label" id="pomo-ring-label">Ready</span>
+            </div>
+            <!-- SVG ring -->
+            <div class="pomo-ring-wrap" aria-hidden="true">
+              <svg class="pomo-ring" viewBox="0 0 120 120">
+                <circle class="pomo-ring__bg" cx="60" cy="60" r="52" />
+                <circle class="pomo-ring__progress" id="pomo-ring-progress"
+                        cx="60" cy="60" r="52"
+                        stroke-dasharray="326.73"
+                        stroke-dashoffset="0" />
+              </svg>
+              <div class="pomo-ring__time" aria-hidden="true">
+                <span id="pomo-big-display">25:00</span>
+              </div>
+            </div>
+            <div class="pomo-controls">
+              <button class="btn btn--ghost btn--sm pomo-mode-btn" data-mode="focus" aria-pressed="true">🎯 Focus</button>
+              <button class="btn btn--ghost btn--sm pomo-mode-btn" data-mode="break" aria-pressed="false">☕ Break</button>
+            </div>
+            <div class="pomo-actions">
+              <button class="btn btn--primary" id="pomo-card-start">Start</button>
+              <button class="btn btn--outline" id="pomo-card-reset">Reset</button>
+            </div>
+            <p class="pomo-session-count">Sessions: <strong id="pomo-card-count">0</strong> today</p>
+          </div>
+
+          <!-- Subject breakdown doughnut -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Subject Breakdown</h3>
+            </div>
+            <div class="chart-wrap" style="position:relative;height:200px">
+              <canvas id="chart-subjects" aria-label="Subject time distribution" role="img"></canvas>
+            </div>
+          </div>
+
+        </div><!-- /.dashboard-grid -->
+      </section><!-- /#view-dashboard -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: SCHEDULE  (Drag & Drop Weekly Planner)
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-schedule" aria-label="Weekly Schedule">
+        <div class="view-header">
+          <h2 class="view-title">Weekly Schedule</h2>
+          <button class="btn btn--primary btn--sm" id="btn-add-session">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Session
+          </button>
+        </div>
+
+        <div class="week-grid" id="week-grid" role="list" aria-label="Weekly schedule columns">
+          <!-- JS renders 7 day columns, each with a SortableJS list -->
+        </div>
+      </section><!-- /#view-schedule -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: STUDY LOG
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-studylog" aria-label="Study Log">
+        <div class="view-header">
+          <h2 class="view-title">Study Log</h2>
+          <div class="header-actions">
+            <!-- Tag filter -->
+            <div class="tag-filter" id="tag-filter" role="group" aria-label="Filter by tag">
+              <button class="tag-chip tag-chip--active" data-tag="all">All</button>
+            </div>
+            <button class="btn btn--primary btn--sm" id="btn-add-log">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Log Study
+            </button>
+          </div>
+        </div>
+
+        <!-- Log entries list -->
+        <div class="log-list" id="log-list" role="list" aria-label="Study log entries">
+          <div class="empty-state">
+            <span aria-hidden="true">📖</span>
+            <p>No study sessions logged yet. Hit "Log Study" to start!</p>
+          </div>
+        </div>
+      </section><!-- /#view-studylog -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: SMART NOTES  (Camera / Gallery + OCR)
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-notes" aria-label="Smart Notes">
+        <div class="view-header">
+          <h2 class="view-title">Smart Notes</h2>
+          <div class="header-actions">
+            <button class="btn btn--outline btn--sm" id="btn-capture-camera">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Camera
+            </button>
+            <button class="btn btn--outline btn--sm" id="btn-capture-gallery">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Gallery
+            </button>
+            <button class="btn btn--primary btn--sm" id="btn-new-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Note
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden file input (camera + gallery) -->
+        <input type="file" id="img-input-camera" accept="image/*" capture="environment"
+               class="sr-only" aria-label="Take photo" />
+        <input type="file" id="img-input-gallery" accept="image/*"
+               class="sr-only" aria-label="Choose from gallery" />
+
+        <!-- OCR status -->
+        <div class="ocr-status hidden" id="ocr-status" role="status" aria-live="polite">
+          <div class="ocr-progress-wrap">
+            <div class="ocr-progress-bar" id="ocr-progress-bar" style="width:0%"></div>
+          </div>
+          <span id="ocr-status-text">Recognising text…</span>
+        </div>
+
+        <!-- Notes grid -->
+        <div class="notes-grid" id="notes-grid" role="list" aria-label="Notes">
+          <div class="empty-state">
+            <span aria-hidden="true">🗒</span>
+            <p>No notes yet. Capture an image or write a new note!</p>
+          </div>
+        </div>
+      </section><!-- /#view-notes -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: PROGRESS TRACKER
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-progress" aria-label="Progress Tracker">
+        <div class="view-header">
+          <h2 class="view-title">Progress Tracker</h2>
+          <div class="period-toggle" role="group" aria-label="Chart period">
+            <button class="btn btn--ghost btn--sm period-btn period-btn--active" data-period="7">7D</button>
+            <button class="btn btn--ghost btn--sm period-btn" data-period="30">30D</button>
+            <button class="btn btn--ghost btn--sm period-btn" data-period="90">90D</button>
+          </div>
+        </div>
+
+        <div class="progress-grid">
+          <!-- Study time line chart -->
+          <div class="card card--wide">
+            <div class="card-header">
+              <h3 class="card-title">Study Time</h3>
+              <span class="card-badge" id="progress-total-badge">— total min</span>
+            </div>
+            <div class="chart-wrap" style="position:relative;height:220px">
+              <canvas id="chart-progress-line" aria-label="Study time over period" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Subject hours bar chart -->
+          <div class="card card--wide">
+            <div class="card-header">
+              <h3 class="card-title">Hours by Subject</h3>
+            </div>
+            <div class="chart-wrap" style="position:relative;height:220px">
+              <canvas id="chart-progress-bar" aria-label="Hours per subject" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Streak info card -->
+          <div class="card streak-card">
+            <h3 class="card-title">🔥 Streak Stats</h3>
+            <div class="streak-stats">
+              <div class="streak-stat">
+                <span class="streak-stat__val" id="streak-current">0</span>
+                <span class="streak-stat__label">Current Streak</span>
+              </div>
+              <div class="streak-stat">
+                <span class="streak-stat__val" id="streak-best">0</span>
+                <span class="streak-stat__label">Best Streak</span>
+              </div>
+              <div class="streak-stat">
+                <span class="streak-stat__val" id="streak-total-days">0</span>
+                <span class="streak-stat__label">Total Study Days</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- XP over time -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">XP Earned</h3>
+            </div>
+            <div class="chart-wrap" style="position:relative;height:180px">
+              <canvas id="chart-xp" aria-label="XP earned over time" role="img"></canvas>
+            </div>
+          </div>
+        </div>
+      </section><!-- /#view-progress -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: CALENDAR HEATMAP
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-calendar" aria-label="Calendar Heatmap">
+        <div class="view-header">
+          <h2 class="view-title">Study Calendar</h2>
+          <div class="header-actions">
+            <button class="icon-btn" id="cal-prev" aria-label="Previous month">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="cal-month-label" id="cal-month-label">June 2025</span>
+            <button class="icon-btn" id="cal-next" aria-label="Next month">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="card">
+          <div class="heatmap-legend" aria-label="Heatmap colour legend">
+            <span>Less</span>
+            <div class="heatmap-swatches" aria-hidden="true">
+              <span class="swatch swatch--0"></span>
+              <span class="swatch swatch--1"></span>
+              <span class="swatch swatch--2"></span>
+              <span class="swatch swatch--3"></span>
+              <span class="swatch swatch--4"></span>
+            </div>
+            <span>More</span>
+          </div>
+          <div class="heatmap-grid" id="heatmap-grid" role="grid" aria-label="Monthly study heatmap">
+            <!-- JS renders day cells -->
+          </div>
+          <div class="heatmap-tooltip hidden" id="heatmap-tooltip" role="tooltip"></div>
+        </div>
+
+        <!-- Monthly summary -->
+        <div class="cal-summary-cards">
+          <div class="cal-summary-card">
+            <span class="cal-summary-val" id="cal-total-days">0</span>
+            <span class="cal-summary-label">Days Studied</span>
+          </div>
+          <div class="cal-summary-card">
+            <span class="cal-summary-val" id="cal-total-min">0m</span>
+            <span class="cal-summary-label">Total Minutes</span>
+          </div>
+          <div class="cal-summary-card">
+            <span class="cal-summary-val" id="cal-avg-min">0m</span>
+            <span class="cal-summary-label">Avg / Day</span>
+          </div>
+        </div>
+      </section><!-- /#view-calendar -->
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           VIEW: ACHIEVEMENTS / GAMIFICATION
+      ═══════════════════════════════════════════════════════════ -->
+      <section class="view hidden" id="view-achievements" aria-label="Achievements">
+        <div class="view-header">
+          <h2 class="view-title">Achievements</h2>
+          <div class="xp-total-display">
+            ⚡ <strong id="ach-xp-total">0</strong> XP total
+          </div>
+        </div>
+
+        <!-- XP progress bar to next level -->
+        <div class="card level-card">
+          <div class="level-info">
+            <span class="level-badge" id="level-badge">Lv 1</span>
+            <div class="level-progress-wrap">
+              <div class="level-label-row">
+                <span id="level-name">Beginner</span>
+                <span id="level-xp-label">0 / 100 XP</span>
+              </div>
+              <div class="level-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                   aria-valuenow="0" id="level-bar-outer">
+                <div class="level-bar__fill" id="level-bar-fill" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badge grid -->
+        <h3 class="section-heading">Badges</h3>
+        <div class="badges-grid" id="badges-grid" role="list" aria-label="Achievement badges">
+          <!-- JS renders badge cards -->
+        </div>
+
+        <!-- Point log -->
+        <h3 class="section-heading">Recent XP Log</h3>
+        <ul class="xp-log-list" id="xp-log-list" role="list" aria-label="Recent XP events">
+          <li class="empty-state">No XP events yet.</li>
+        </ul>
+      </section><!-- /#view-achievements -->
+
+    </main><!-- /#main-content -->
+  </div><!-- /#app -->
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       MODAL: Add / Edit Schedule Session
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-session" role="dialog"
+       aria-modal="true" aria-labelledby="modal-session-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-session-title">Add Schedule Session</h3>
+        <button class="modal-close" aria-label="Close modal" data-close="modal-session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="session-edit-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="session-subject">Subject *</label>
+            <input type="text" id="session-subject" placeholder="e.g. Mathematics" required />
+          </div>
+          <div class="form-group">
+            <label for="session-topic">Topic</label>
+            <input type="text" id="session-topic" placeholder="e.g. Integration" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="session-day">Day *</label>
+            <select id="session-day" required>
+              <option value="">Select day…</option>
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="session-time">Time</label>
+            <input type="time" id="session-time" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="session-duration">Duration (min)</label>
+            <input type="number" id="session-duration" min="5" max="480" placeholder="60" />
+          </div>
+          <div class="form-group">
+            <label for="session-color">Colour Label</label>
+            <div class="color-picker" id="session-color-picker" role="group" aria-label="Colour options">
+              <button class="color-dot color-dot--active" data-color="#4f8ef7" style="background:#4f8ef7" aria-label="Blue" aria-pressed="true"></button>
+              <button class="color-dot" data-color="#22c55e" style="background:#22c55e" aria-label="Green" aria-pressed="false"></button>
+              <button class="color-dot" data-color="#f59e0b" style="background:#f59e0b" aria-label="Amber" aria-pressed="false"></button>
+              <button class="color-dot" data-color="#ef4444" style="background:#ef4444" aria-label="Red" aria-pressed="false"></button>
+              <button class="color-dot" data-color="#a855f7" style="background:#a855f7" aria-label="Purple" aria-pressed="false"></button>
+              <button class="color-dot" data-color="#06b6d4" style="background:#06b6d4" aria-label="Cyan" aria-pressed="false"></button>
+            </div>
+            <input type="hidden" id="session-color" value="#4f8ef7" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="session-tags">Tags (comma-separated)</label>
+          <input type="text" id="session-tags" placeholder="exam, revision, project" />
+        </div>
+        <div class="form-group">
+          <label for="session-notes">Notes</label>
+          <textarea id="session-notes" rows="3" placeholder="Any additional notes…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" data-close="modal-session">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-session">Save Session</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       MODAL: Log Study Session
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-log" role="dialog"
+       aria-modal="true" aria-labelledby="modal-log-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-log-title">Log Study Session</h3>
+        <button class="modal-close" aria-label="Close modal" data-close="modal-log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="log-edit-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="log-subject">Subject *</label>
+            <input type="text" id="log-subject" placeholder="e.g. Physics" required />
+          </div>
+          <div class="form-group">
+            <label for="log-topic">Topic</label>
+            <input type="text" id="log-topic" placeholder="e.g. Quantum Mechanics" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="log-date">Date *</label>
+            <input type="date" id="log-date" required />
+          </div>
+          <div class="form-group">
+            <label for="log-duration">Duration (min) *</label>
+            <input type="number" id="log-duration" min="1" max="720" placeholder="45" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="log-tags">Tags</label>
+          <input type="text" id="log-tags" placeholder="revision, exam, project" />
+        </div>
+        <div class="form-group">
+          <label for="log-mood">Mood / Productivity</label>
+          <div class="mood-picker" id="log-mood-picker" role="group" aria-label="Mood rating">
+            <button class="mood-btn" data-mood="1" aria-label="Poor" aria-pressed="false">😩</button>
+            <button class="mood-btn" data-mood="2" aria-label="Low" aria-pressed="false">😐</button>
+            <button class="mood-btn" data-mood="3" aria-label="Okay" aria-pressed="false">🙂</button>
+            <button class="mood-btn" data-mood="4" aria-label="Good" aria-pressed="false">😄</button>
+            <button class="mood-btn" data-mood="5" aria-label="Excellent" aria-pressed="false">🤩</button>
+          </div>
+          <input type="hidden" id="log-mood" value="3" />
+        </div>
+        <div class="form-group">
+          <label for="log-notes">Notes</label>
+          <textarea id="log-notes" rows="3" placeholder="What did you cover today?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" data-close="modal-log">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-log">Save Log</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       MODAL: New / Edit Note
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-note" role="dialog"
+       aria-modal="true" aria-labelledby="modal-note-title">
+    <div class="modal modal--wide">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-note-title">New Note</h3>
+        <button class="modal-close" aria-label="Close modal" data-close="modal-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="note-edit-id" />
+
+        <!-- Captured image preview -->
+        <div class="note-image-preview hidden" id="note-image-preview">
+          <img id="note-preview-img" src="" alt="Captured note image" />
+          <button class="btn btn--outline btn--sm" id="btn-run-ocr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Extract Text (OCR)
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label for="note-title">Title *</label>
+          <input type="text" id="note-title" placeholder="Note title" required />
+        </div>
+        <div class="form-group">
+          <label for="note-content">Content</label>
+          <textarea id="note-content" rows="8" placeholder="Your note content (or use OCR to auto-fill from image)…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="note-subject">Subject</label>
+            <input type="text" id="note-subject" placeholder="e.g. Chemistry" />
+          </div>
+          <div class="form-group">
+            <label for="note-tags">Tags</label>
+            <input type="text" id="note-tags" placeholder="formula, definition" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="note-color">Colour</label>
+          <div class="color-picker" id="note-color-picker" role="group" aria-label="Note colour">
+            <button class="color-dot color-dot--active" data-color="#0f1117" style="background:#1e2130" aria-label="Dark" aria-pressed="true"></button>
+            <button class="color-dot" data-color="#1a2a1a" style="background:#1a2a1a" aria-label="Green Dark" aria-pressed="false"></button>
+            <button class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e" aria-label="Navy" aria-pressed="false"></button>
+            <button class="color-dot" data-color="#2a1a1a" style="background:#2a1a1a" aria-label="Dark Red" aria-pressed="false"></button>
+            <button class="color-dot" data-color="#2a2a1a" style="background:#2a2a1a" aria-label="Dark Gold" aria-pressed="false"></button>
+          </div>
+          <input type="hidden" id="note-color" value="#0f1117" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" data-close="modal-note">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-note">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════
+       MODAL: Achievement Unlock Celebration
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="modal-achievement" role="dialog"
+       aria-modal="true" aria-labelledby="modal-achievement-title">
+    <div class="modal modal--celebration">
+      <div class="celebration-content">
+        <div class="celebration-emoji" id="ach-unlock-icon" aria-hidden="true">🏆</div>
+        <h3 class="modal-title" id="modal-achievement-title">Achievement Unlocked!</h3>
+        <p class="celebration-name" id="ach-unlock-name">First Step</p>
+        <p class="celebration-desc" id="ach-unlock-desc">You logged your first study session.</p>
+        <div class="celebration-xp" id="ach-unlock-xp">+50 XP</div>
+        <button class="btn btn--primary" id="btn-ach-close">Awesome! 🎉</button>
+      </div>
+      <!-- Confetti canvas -->
+      <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+    </div>
+  </div>
+
+
+  <!-- Main script (deferred) -->
+  <script src="script.js" defer></script>
+
+  <!-- Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[SW] Registered:', reg.scope))
+          .catch(err => console.warn('[SW] Registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
