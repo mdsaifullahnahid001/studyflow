@@ -13,9 +13,17 @@
 "use strict";
 
 /* ============================================================
- * 1. FIREBASE INITIALISATION  (replace placeholder)
+ * 1. FIREBASE INITIALISATION 
  * ============================================================ */
-const firebaseConfig = YOUR_FIREBASE_CONFIG; // ← paste your config object here
+const firebaseConfig = {
+  apiKey: "AIzaSyAQvfw48eMA0Nfk09TkmuChrBiPvVlaCUU",
+  authDomain: "studyflow-2b705.firebaseapp.com",
+  projectId: "studyflow-2b705",
+  storageBucket: "studyflow-2b705.firebasestorage.app",
+  messagingSenderId: "35638358501",
+  appId: "1:35638358501:web:4f96edc6ca3813a432ff0c",
+  measurementId: "G-YR27WD6Q3Y"
+};
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
