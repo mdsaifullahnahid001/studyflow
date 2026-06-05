@@ -909,13 +909,11 @@
 
   <!-- Service Worker registration -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('[SW] Registered:', reg.scope))
-          .catch(err => console.warn('[SW] Registration failed:', err));
-      });
-    }
-  </script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/studyflow/sw.js')
+      .then(reg => console.log('SW registered!', reg))
+      .catch(err => console.log('SW registration failed!', err));
+  }
+</script>
 </body>
 </html>
