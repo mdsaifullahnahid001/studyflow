@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#0f1117" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="manifest" href="/studyflow/manifest.json" />
+  <link rel="apple-touch-icon" href="/studyflow/icons/icon-192.png" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,7 +38,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/studyflow/style.css" />
 
   <title>StudyFlow — Study Routine PWA</title>
 </head>
@@ -908,15 +908,14 @@
   <script src="script.js" defer></script>
 
   <!-- Service Worker registration -->
- <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/studyflow/sw.js')
-        .then(reg => console.log('SW registered!', reg))
-        .catch(err => console.log('SW registration failed!', err));
-    });
-  }
-</script>
-</script>
+<script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/studyflow/sw.js')
+          .then(reg => console.log('SW registered!', reg))
+          .catch(err => console.log('SW registration failed!', err));
+      });
+    }
+  </script>
 </body>
 </html>
