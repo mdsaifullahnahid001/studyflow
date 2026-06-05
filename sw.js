@@ -22,7 +22,6 @@ const PRECACHE_ASSETS = [
   '/studyflow/style.css',
   '/studyflow/script.js',
   '/studyflow/manifest.json',
-  '/studyflow/offline.html',
 
   /* ── External CDN libraries ── */
   'https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js',
